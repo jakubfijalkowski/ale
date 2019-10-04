@@ -10,22 +10,26 @@ call ale#Set('terraform_tflint_executable', 'tflint')
 function! ale_linters#terraform#tflint#Handle(buffer, lines) abort
     let l:output = []
 
-    for l:error in ale#util#FuzzyJSONDecode(a:lines, [])
-        if l:error.type is# 'ERROR'
-            let l:type = 'E'
-        elseif l:error.type is# 'NOTICE'
-            let l:type = 'I'
-        else
-            let l:type = 'W'
-        endif
+    let l:json = ale#util#FuzzyJSONDecode(a:lines, {})
 
-        call add(l:output, {
-        \   'lnum': l:error.line,
-        \   'text': l:error.message,
-        \   'type': l:type,
-        \   'code': l:error.detector,
-        \})
-    endfor
+    if has_key(l:json, 'issues')
+        for l:error in l:json.issues
+            if l:error.rule.severity is# 'error'
+                let l:type = 'E'
+            elseif l:error.rule.severity is# 'info'
+                let l:type = 'I'
+            else
+                let l:type = 'W'
+            endif
+
+            call add(l:output, {
+            \   'lnum': l:error.range.start.line,
+            \   'text': l:error.message,
+            \   'type': l:type,
+            \   'code': l:error.rule.name,
+            \})
+        endfor
+    endif
 
     return l:output
 endfunction
